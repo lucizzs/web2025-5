@@ -4,6 +4,8 @@ const fs = require('fs/promises');
 const { createReadStream, createWriteStream } = require('fs');
 const path = require('path');
 const url = require('url');
+const superagent = require('superagent');
+
 
 const program = new Command();
 
@@ -32,12 +34,21 @@ const server = http.createServer(async (req, res) => {
     switch (req.method) {
         case 'GET':
             try {
+                // Перевіряємо, чи файл вже є в кеші
                 await fs.access(filePath);
                 res.writeHead(200, { 'Content-Type': 'image/jpeg' });
                 createReadStream(filePath).pipe(res);
             } catch {
-                res.writeHead(404, { 'Content-Type': 'text/plain' });
-                res.end('Not Found');
+                // Якщо немає — завантажуємо з http.cat
+                try {
+                    const response = await superagent.get(`https://http.cat/${code}`);
+                    await fs.writeFile(filePath, response.body); // зберігаємо в кеш
+                    res.writeHead(200, { 'Content-Type': 'image/jpeg' });
+                    res.end(response.body); // відправляємо відповідь
+                } catch (err) {
+                    res.writeHead(404, { 'Content-Type': 'text/plain' });
+                    res.end('Image not found on http.cat');
+                }
             }
             break;
 
