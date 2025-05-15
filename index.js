@@ -40,11 +40,15 @@ const server = http.createServer(async (req, res) => {
                 createReadStream(filePath).pipe(res);
             } catch {
                 // Якщо немає — завантажуємо з http.cat
+
                 try {
-                    const response = await superagent.get(`https://http.cat/${code}`);
-                    await fs.writeFile(filePath, response.body); // зберігаємо в кеш
+                    const response = await superagent
+                        .get(`https://http.cat/${code}`)
+                        .ok(res => true); // дозволити 404 або інші статуси
+
+                    await fs.writeFile(filePath, response.body); // кешуємо зображення
                     res.writeHead(200, { 'Content-Type': 'image/jpeg' });
-                    res.end(response.body); // відправляємо відповідь
+                    res.end(response.body); // надсилаємо клієнту
                 } catch (err) {
                     res.writeHead(404, { 'Content-Type': 'text/plain' });
                     res.end('Image not found on http.cat');
